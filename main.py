@@ -1,4 +1,4 @@
-# main.py - Полная версия TikTok викторины
+# main.py
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
@@ -17,7 +17,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Хранилище данных (в памяти)
 quizzes = {}
 attempts = {}
 
@@ -30,43 +29,20 @@ class QuizData(BaseModel):
     title: str
     questions: List[Question]
 
-# ========== ОТДАЧА ФАЙЛОВ ==========
-
 @app.get("/", response_class=HTMLResponse)
 async def serve_frontend():
-    try:
-        with open("index.html", "r", encoding="utf-8") as f:
+    with open("index.html", "r", encoding="utf-8") as f:
         return HTMLResponse(content=f.read())
-    except:
-        return HTMLResponse(content="""
-        <!DOCTYPE html>
-        <html>
-        <head><meta charset="UTF-8"><title>TikTok Викторина</title></head>
-        <body style="font-family:Arial;text-align:center;padding:50px">
-            <h1>🎯 TikTok Викторина</h1>
-            <p>Создайте викторину через API</p>
-            <p>Или добавьте файл index.html</p>
-        </body>
-        </html>
-        """)
 
 @app.get("/style.css")
 async def serve_css():
-    try:
-        with open("style.css", "r", encoding="utf-8") as f:
-            return HTMLResponse(content=f.read(), media_type="text/css")
-    except:
-        return HTMLResponse(content="/* style.css not found */", media_type="text/css")
+    with open("style.css", "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read(), media_type="text/css")
 
 @app.get("/script.js")
 async def serve_js():
-    try:
-        with open("script.js", "r", encoding="utf-8") as f:
-            return HTMLResponse(content=f.read(), media_type="application/javascript")
-    except:
-        return HTMLResponse(content="// script.js not found", media_type="application/javascript")
-
-# ========== API ЭНДПОИНТЫ ==========
+    with open("script.js", "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read(), media_type="application/javascript")
 
 @app.post("/create_quiz")
 async def create_quiz(quiz_data: QuizData):
@@ -144,16 +120,12 @@ async def finish_quiz(attempt_id: str):
     }
     return result
 
-@app.get("/health")
-async def health_check():
-    return {"status": "ok", "quizzes": len(quizzes), "attempts": len(attempts)}
-
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.environ.get("PORT", 10000))
+    port = int(os.environ.get("PORT", 8000))
     print("=" * 50)
     print("🎯 TikTok Викторина Челлендж")
     print("=" * 50)
-    print(f"Сервер запущен на порту {port}")
+    print(f"Сервер запущен на http://localhost:{port}")
     print("=" * 50)
     uvicorn.run(app, host="0.0.0.0", port=port)
