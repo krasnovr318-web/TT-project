@@ -1,4 +1,4 @@
-# quiz_backend.py - ИСПРАВЛЕННАЯ ВЕРСИЯ
+# quiz_backend.py - ВЕРСИЯ ДЛЯ RENDER (psycopg2 вместо asyncpg)
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
@@ -6,80 +6,13 @@ from pydantic import BaseModel
 from typing import List
 import uuid
 import os
-import asyncpg
+import psycopg2
+import psycopg2.extras
 import json
-from contextlib import asynccontextmanager
+from contextlib import contextmanager
 
-# ============================================
-# НАСТРОЙКА ПОДКЛЮЧЕНИЯ К БАЗЕ ДАННЫХ
-# ============================================
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:password@localhost:5432/postgres")
+app = FastAPI()
 
-# Глобальные переменные
-db_pool = None
-
-
-# ============================================
-# LIFESPAN (НОВЫЙ СПОСОБ ВМЕСТО on_event)
-# ============================================
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # STARTUP: выполняется при запуске
-    global db_pool
-    print("🚀 Запуск сервера...")
-
-    # Подключаемся к Supabase
-    try:
-        db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=10)
-        print("✅ Подключено к Supabase!")
-
-        # Создаем таблицы
-        async with db_pool.acquire() as conn:
-            await conn.execute('''
-                CREATE TABLE IF NOT EXISTS quizzes (
-                    id TEXT PRIMARY KEY,
-                    title TEXT NOT NULL,
-                    questions TEXT NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            await conn.execute('''
-                CREATE TABLE IF NOT EXISTS attempts (
-                    id TEXT PRIMARY KEY,
-                    quiz_id TEXT NOT NULL,
-                    answers TEXT,
-                    score INTEGER DEFAULT 0,
-                    finished INTEGER DEFAULT 0,
-                    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            await conn.execute('''
-                CREATE TABLE IF NOT EXISTS users (
-                    id TEXT PRIMARY KEY,
-                    username TEXT UNIQUE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-        print("✅ Таблицы созданы/проверены")
-
-    except Exception as e:
-        print(f"❌ Ошибка подключения к Supabase: {e}")
-        print("⚠️ ПРОВЕРЬТЕ переменную окружения DATABASE_URL")
-        raise
-
-    yield  # Здесь приложение работает
-
-    # SHUTDOWN: выполняется при остановке
-    print("🛑 Остановка сервера...")
-    if db_pool:
-        await db_pool.close()
-        print("🔌 Соединение с БД закрыто")
-
-
-# Создаем приложение с lifespan
-app = FastAPI(lifespan=lifespan)
-
-# Разрешаем CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -87,6 +20,67 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ============================================
+# ПОДКЛЮЧЕНИЕ К БАЗЕ ДАННЫХ (psycopg2)
+# ============================================
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:password@localhost:5432/postgres")
+
+
+@contextmanager
+def get_db_connection():
+    conn = psycopg2.connect(DATABASE_URL)
+    conn.autocommit = False
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def init_database():
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Таблица викторин
+                cur.execute('''
+                    CREATE TABLE IF NOT EXISTS quizzes (
+                        id TEXT PRIMARY KEY,
+                        title TEXT NOT NULL,
+                        questions TEXT NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                # Таблица попыток
+                cur.execute('''
+                    CREATE TABLE IF NOT EXISTS attempts (
+                        id TEXT PRIMARY KEY,
+                        quiz_id TEXT NOT NULL,
+                        answers TEXT,
+                        score INTEGER DEFAULT 0,
+                        finished INTEGER DEFAULT 0,
+                        started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                # Таблица пользователей (опционально)
+                cur.execute('''
+                    CREATE TABLE IF NOT EXISTS users (
+                        id TEXT PRIMARY KEY,
+                        username TEXT UNIQUE,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+        print("✅ Таблицы созданы/проверены")
+    except Exception as e:
+        print(f"❌ Ошибка инициализации БД: {e}")
+        raise
+
+
+# Инициализация БД при запуске
+init_database()
 
 
 # ============================================
@@ -112,7 +106,7 @@ async def serve_frontend():
     try:
         with open("index.html", "r", encoding="utf-8") as f:
             return HTMLResponse(content=f.read())
-    except FileNotFoundError:
+    except:
         return HTMLResponse(content="<h1>index.html не найден</h1>")
 
 
@@ -121,7 +115,7 @@ async def serve_css():
     try:
         with open("style.css", "r", encoding="utf-8") as f:
             return HTMLResponse(content=f.read(), media_type="text/css")
-    except FileNotFoundError:
+    except:
         return HTMLResponse(content="", media_type="text/css")
 
 
@@ -130,7 +124,7 @@ async def serve_js():
     try:
         with open("script.js", "r", encoding="utf-8") as f:
             return HTMLResponse(content=f.read(), media_type="application/javascript")
-    except FileNotFoundError:
+    except:
         return HTMLResponse(content="", media_type="application/javascript")
 
 
@@ -142,20 +136,23 @@ async def create_quiz(quiz_data: QuizData):
     quiz_id = str(uuid.uuid4())[:8]
     questions_json = json.dumps([q.dict() for q in quiz_data.questions], ensure_ascii=False)
 
-    async with db_pool.acquire() as conn:
-        await conn.execute(
-            "INSERT INTO quizzes (id, title, questions) VALUES ($1, $2, $3)",
-            quiz_id, quiz_data.title, questions_json
-        )
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO quizzes (id, title, questions) VALUES (%s, %s, %s)",
+                (quiz_id, quiz_data.title, questions_json)
+            )
 
-    print(f"✅ Создана викторина: {quiz_id} - {quiz_data.title}")
+    print(f"✅ Создана викторина: {quiz_id}")
     return {"quiz_id": quiz_id, "title": quiz_data.title}
 
 
 @app.get("/quiz/{quiz_id}")
 async def get_quiz(quiz_id: str):
-    async with db_pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT * FROM quizzes WHERE id = $1", quiz_id)
+    with get_db_connection() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM quizzes WHERE id = %s", (quiz_id,))
+            row = cur.fetchone()
 
     if not row:
         raise HTTPException(status_code=404, detail="Викторина не найдена")
@@ -176,51 +173,33 @@ async def get_quiz(quiz_id: str):
     }
 
 
-@app.get("/all_quizzes")
-async def get_all_quizzes():
-    async with db_pool.acquire() as conn:
-        rows = await conn.fetch("SELECT id, title, created_at FROM quizzes ORDER BY created_at DESC")
-
-    return [{"id": r["id"], "title": r["title"], "created_at": str(r["created_at"])} for r in rows]
-
-
-@app.delete("/delete_quiz/{quiz_id}")
-async def delete_quiz(quiz_id: str):
-    async with db_pool.acquire() as conn:
-        await conn.execute("DELETE FROM quizzes WHERE id = $1", quiz_id)
-        await conn.execute("DELETE FROM attempts WHERE quiz_id = $1", quiz_id)
-
-    return {"success": True, "message": "Викторина удалена"}
-
-
-# ============================================
-# API ДЛЯ ПРОХОЖДЕНИЯ
-# ============================================
 @app.post("/start_quiz/{quiz_id}")
 async def start_quiz(quiz_id: str):
     # Проверяем существование викторины
-    async with db_pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT id FROM quizzes WHERE id = $1", quiz_id)
-
-    if not row:
-        raise HTTPException(status_code=404, detail="Викторина не найдена")
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM quizzes WHERE id = %s", (quiz_id,))
+            if not cur.fetchone():
+                raise HTTPException(status_code=404, detail="Викторина не найдена")
 
     attempt_id = str(uuid.uuid4())[:8]
 
-    async with db_pool.acquire() as conn:
-        await conn.execute(
-            "INSERT INTO attempts (id, quiz_id, score, finished, answers) VALUES ($1, $2, $3, $4, $5)",
-            attempt_id, quiz_id, 0, 0, json.dumps([])
-        )
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO attempts (id, quiz_id, score, finished, answers) VALUES (%s, %s, %s, %s, %s)",
+                (attempt_id, quiz_id, 0, 0, json.dumps([]))
+            )
 
-    print(f"🎮 Начата попытка: {attempt_id}")
     return {"attempt_id": attempt_id}
 
 
 @app.post("/answer/{attempt_id}")
 async def submit_answer(attempt_id: str, data: dict):
-    async with db_pool.acquire() as conn:
-        attempt = await conn.fetchrow("SELECT * FROM attempts WHERE id = $1", attempt_id)
+    with get_db_connection() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM attempts WHERE id = %s", (attempt_id,))
+            attempt = cur.fetchone()
 
     if not attempt:
         raise HTTPException(status_code=404, detail="Попытка не найдена")
@@ -229,8 +208,10 @@ async def submit_answer(attempt_id: str, data: dict):
         raise HTTPException(status_code=400, detail="Викторина завершена")
 
     # Получаем вопросы викторины
-    async with db_pool.acquire() as conn:
-        quiz = await conn.fetchrow("SELECT * FROM quizzes WHERE id = $1", attempt["quiz_id"])
+    with get_db_connection() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM quizzes WHERE id = %s", (attempt["quiz_id"],))
+            quiz = cur.fetchone()
 
     questions = json.loads(quiz["questions"])
     question = questions[data["question_index"]]
@@ -246,34 +227,38 @@ async def submit_answer(attempt_id: str, data: dict):
 
     new_score = attempt["score"] + (1 if is_correct else 0)
 
-    async with db_pool.acquire() as conn:
-        await conn.execute(
-            "UPDATE attempts SET score = $1, answers = $2 WHERE id = $3",
-            new_score, json.dumps(answers), attempt_id
-        )
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE attempts SET score = %s, answers = %s WHERE id = %s",
+                (new_score, json.dumps(answers), attempt_id)
+            )
 
     return {"correct": is_correct, "score": new_score}
 
 
 @app.post("/finish_quiz/{attempt_id}")
 async def finish_quiz(attempt_id: str):
-    async with db_pool.acquire() as conn:
-        attempt = await conn.fetchrow("SELECT * FROM attempts WHERE id = $1", attempt_id)
+    with get_db_connection() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM attempts WHERE id = %s", (attempt_id,))
+            attempt = cur.fetchone()
 
     if not attempt:
         raise HTTPException(status_code=404, detail="Попытка не найдена")
 
-    async with db_pool.acquire() as conn:
-        quiz = await conn.fetchrow("SELECT * FROM quizzes WHERE id = $1", attempt["quiz_id"])
+    with get_db_connection() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM quizzes WHERE id = %s", (attempt["quiz_id"],))
+            quiz = cur.fetchone()
 
     questions = json.loads(quiz["questions"])
     total = len(questions)
     percentage = int((attempt["score"] / total) * 100) if total > 0 else 0
 
-    async with db_pool.acquire() as conn:
-        await conn.execute("UPDATE attempts SET finished = 1 WHERE id = $1", attempt_id)
-
-    print(f"🏆 Завершена попытка {attempt_id}: {attempt['score']}/{total}")
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE attempts SET finished = 1 WHERE id = %s", (attempt_id,))
 
     return {
         "score": attempt["score"],
@@ -282,36 +267,17 @@ async def finish_quiz(attempt_id: str):
     }
 
 
-# ============================================
-# СТАТИСТИКА
-# ============================================
-@app.get("/stats")
-async def get_stats():
-    async with db_pool.acquire() as conn:
-        quizzes_count = await conn.fetchval("SELECT COUNT(*) FROM quizzes")
-        attempts_count = await conn.fetchval("SELECT COUNT(*) FROM attempts WHERE finished = 1")
-        avg_score = await conn.fetchval("SELECT AVG(score) FROM attempts WHERE finished = 1")
-
-    return {
-        "total_quizzes": quizzes_count,
-        "total_attempts": attempts_count,
-        "average_score": round(avg_score or 0, 2)
-    }
-
-
 @app.get("/health")
 async def health_check():
     try:
-        async with db_pool.acquire() as conn:
-            await conn.fetchval("SELECT 1")
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
         return {"status": "ok", "database": "connected"}
-    except:
-        return {"status": "error", "database": "disconnected"}
+    except Exception as e:
+        return {"status": "error", "database": str(e)}
 
 
-# ============================================
-# ЗАПУСК СЕРВЕРА (только для локального теста)
-# ============================================
 if __name__ == "__main__":
     import uvicorn
 
