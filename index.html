@@ -1,4 +1,3 @@
-<!-- index.html - базовая версия без авторизации -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -8,31 +7,31 @@
     <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-    <div class="quiz-container">
-        <!-- Главное меню -->
-        <div id="menuScreen">
+    <div class="quiz-container" id="app">
+        <!-- ЭКРАН ВХОДА -->
+        <div id="loginScreen">
             <div class="header">
-                <div class="header-icon">🎯</div>
-                <h1>TikTok Викторина</h1>
-                <p>Создай свой челлендж или участвуй в чужом!</p>
+                <div class="header-icon">🔐</div>
+                <h1>Вход в аккаунт</h1>
+                <p>Войдите или создайте новый аккаунт</p>
             </div>
-            
             <div class="content">
-                <button class="btn-create" onclick="showCreateScreen()">
-                    <span class="btn-icon">✨</span>
-                    Создать викторину
-                </button>
-                <button class="btn-join" onclick="showJoinScreen()">
-                    <span class="btn-icon">🎮</span>
-                    Войти по коду
-                </button>
-                
-                <div class="templates-section">
-                    <div class="templates-title">📚 Готовые шаблоны</div>
-                    <div class="templates-grid" id="templatesGrid"></div>
+                <div class="auth-tabs">
+                    <button class="auth-tab active" onclick="switchAuthTab('login')">Вход</button>
+                    <button class="auth-tab" onclick="switchAuthTab('register')">Регистрация</button>
+                </div>
+                <div id="loginForm">
+                    <input type="text" id="loginUsername" class="input-field" placeholder="Имя пользователя">
+                    <input type="password" id="loginPassword" class="input-field" placeholder="Пароль">
+                    <button class="btn-primary" onclick="window.login()">🔓 Войти</button>
+                </div>
+                <div id="registerForm" class="hidden">
+                    <input type="text" id="regUsername" class="input-field" placeholder="Имя пользователя">
+                    <input type="password" id="regPassword" class="input-field" placeholder="Пароль">
+                    <input type="password" id="regConfirmPassword" class="input-field" placeholder="Подтвердите пароль">
+                    <button class="btn-primary" onclick="window.register()">📝 Зарегистрироваться</button>
                 </div>
             </div>
-            
             <div class="ad-banner">
                 <div class="ad-icon">🧹</div>
                 <div class="ad-text">
@@ -42,114 +41,146 @@
             </div>
         </div>
 
-        <!-- Создание викторины -->
+        <!-- ГЛАВНОЕ МЕНЮ -->
+        <div id="menuScreen" class="hidden">
+            <div class="header">
+                <div class="header-icon">🎯</div>
+                <h1>TikTok Викторина</h1>
+                <p id="welcomeUser">Добро пожаловать!</p>
+                <button class="logout-btn" onclick="window.logout()">🚪 Выйти</button>
+            </div>
+            <div class="content">
+                <button class="btn-create" onclick="window.showCreateScreen()">
+                    <span class="btn-icon">✨</span> Создать викторину
+                </button>
+                <button class="btn-join" onclick="window.showJoinScreen()">
+                    <span class="btn-icon">🎮</span> Войти по коду
+                </button>
+                <button class="btn-templates" onclick="window.showTemplatesScreen()">
+                    <span class="btn-icon">📚</span> Готовые шаблоны
+                </button>
+                <button class="btn-myquiz" onclick="window.showMyQuizzesScreen()">
+                    <span class="btn-icon">📋</span> Мои викторины
+                </button>
+            </div>
+            <div class="dev-panel">
+                <button class="dev-btn" onclick="window.showDevPanel()">🛠 Dev</button>
+            </div>
+            <div class="ad-banner">
+                <div class="ad-icon">🧹</div>
+                <div class="ad-text">
+                    <strong>Требуются волонтеры по уборке дворов!</strong><br>
+                    Присоединяйся каждую субботу в 10:00
+                </div>
+            </div>
+        </div>
+
+        <!-- ОСТАЛЬНЫЕ ЭКРАНЫ (создание, вход по коду, игра, результат, мои викторины, панель разработчика) -->
+        <div id="templatesScreen" class="hidden">
+            <div class="header">
+                <button class="back-btn" onclick="window.showMenuScreen()">←</button>
+                <div class="header-icon">📚</div>
+                <h1>Готовые шаблоны</h1>
+            </div>
+            <div class="content">
+                <div class="templates-grid-full" id="templatesGridFull"></div>
+            </div>
+            <div class="ad-banner-small"><span>🧹</span> Требуются волонтеры по уборке дворов!</div>
+        </div>
+
         <div id="createScreen" class="hidden">
             <div class="header">
-                <button class="back-btn" onclick="showMenuScreen()">←</button>
+                <button class="back-btn" onclick="window.showMenuScreen()">←</button>
                 <div class="header-icon">✨</div>
                 <h1>Создать викторину</h1>
             </div>
-            
             <div class="content">
                 <input type="text" id="quizTitle" class="input-field" placeholder="Название викторины">
                 <div id="questionsContainer"></div>
-                <button class="btn-secondary" onclick="addQuestion()">+ Добавить вопрос</button>
-                <button class="btn-primary" onclick="createQuiz()">🚀 Создать</button>
+                <button class="btn-secondary" onclick="window.addQuestion()">+ Добавить вопрос</button>
+                <button class="btn-primary" onclick="window.createQuiz()">🚀 Создать</button>
             </div>
-            
-            <div class="ad-banner-small">
-                <span>🧹</span>
-                <span>Требуются волонтеры по уборке дворов!</span>
-            </div>
+            <div class="ad-banner-small"><span>🧹</span> Требуются волонтеры по уборке дворов!</div>
         </div>
 
-        <!-- Вход по коду -->
         <div id="joinScreen" class="hidden">
             <div class="header">
-                <button class="back-btn" onclick="showMenuScreen()">←</button>
+                <button class="back-btn" onclick="window.showMenuScreen()">←</button>
                 <div class="header-icon">🎮</div>
                 <h1>Войти в викторину</h1>
             </div>
-            
             <div class="content">
                 <input type="text" id="quizCodeInput" class="input-field" placeholder="Введите код викторины">
-                <button class="btn-primary" onclick="joinQuiz()">Присоединиться</button>
+                <button class="btn-primary" onclick="window.joinQuiz()">Присоединиться</button>
             </div>
-            
-            <div class="ad-banner-small">
-                <span>🧹</span>
-                <span>Требуются волонтеры по уборке дворов!</span>
-            </div>
+            <div class="ad-banner-small"><span>🧹</span> Требуются волонтеры по уборке дворов!</div>
         </div>
 
-        <!-- Код для шаринга -->
-        <div id="shareScreen" class="hidden">
-            <div class="header">
-                <button class="back-btn" onclick="showMenuScreen()">←</button>
-                <div class="header-icon">🎉</div>
-                <h1>Викторина создана!</h1>
-            </div>
-            
-            <div class="content" style="text-align: center;">
-                <div class="share-code-container">
-                    <div class="share-label">Поделись кодом с друзьями:</div>
-                    <div class="quiz-code" id="shareCode"></div>
-                </div>
-                <button class="btn-primary" onclick="copyCode()">📋 Скопировать код</button>
-            </div>
-            
-            <div class="ad-banner-small">
-                <span>🧹</span>
-                <span>Требуются волонтеры по уборке дворов!</span>
-            </div>
-        </div>
-
-        <!-- Прохождение викторины -->
         <div id="quizScreen" class="hidden">
             <div class="header">
                 <h1 id="quizTitleDisplay"></h1>
+                <button class="home-btn" onclick="window.showMenuScreen()">🏠</button>
             </div>
-            
             <div class="timer-container">
                 <div class="timer" id="timer">30</div>
                 <div class="progress-text" id="progressText"></div>
             </div>
-            
             <div class="content">
                 <div class="question-text" id="questionText"></div>
                 <div class="options-grid" id="optionsContainer"></div>
             </div>
-            
-            <div class="ad-banner-small">
-                <span>🧹</span>
-                <span>Требуются волонтеры по уборке дворов!</span>
-            </div>
+            <div class="ad-banner-small"><span>🧹</span> Требуются волонтеры по уборке дворов!</div>
         </div>
 
-        <!-- Результаты -->
         <div id="resultScreen" class="hidden">
             <div class="header">
+                <button class="back-btn" onclick="window.showMenuScreen()">←</button>
                 <div class="header-icon">🏆</div>
                 <h1>Результат</h1>
             </div>
-            
             <div class="content" style="text-align: center;">
                 <div class="score-circle">
                     <div class="score-number" id="finalScore">0</div>
                     <div class="score-total" id="totalQuestions">/0</div>
                 </div>
                 <div class="result-message" id="resultMessage"></div>
-                <button class="btn-tiktok" onclick="shareToTikTok()">📱 Поделиться в TikTok</button>
-                <button class="btn-secondary" onclick="showMenuScreen()">🏠 Главное меню</button>
+                <button class="btn-tiktok" onclick="window.shareToTikTok()">📱 Поделиться в TikTok</button>
+                <button class="btn-secondary" onclick="window.showMenuScreen()">🏠 Главное меню</button>
             </div>
-            
-            <div class="ad-banner-small">
-                <span>🧹</span>
-                <span>Требуются волонтеры по уборке дворов!</span>
+            <div class="ad-banner-small"><span>🧹</span> Требуются волонтеры по уборке дворов!</div>
+        </div>
+
+        <div id="myQuizzesScreen" class="hidden">
+            <div class="header">
+                <button class="back-btn" onclick="window.showMenuScreen()">←</button>
+                <div class="header-icon">📋</div>
+                <h1>Мои викторины</h1>
             </div>
+            <div class="content">
+                <div id="quizzesList" class="quizzes-list"></div>
+            </div>
+            <div class="ad-banner-small"><span>🧹</span> Требуются волонтеры по уборке дворов!</div>
+        </div>
+
+        <div id="devPanelScreen" class="hidden">
+            <div class="header">
+                <button class="back-btn" onclick="window.showMenuScreen()">←</button>
+                <div class="header-icon">🛠</div>
+                <h1>Панель разработчика</h1>
+            </div>
+            <div class="content">
+                <div class="dev-stats">
+                    <h3>📊 Статистика</h3>
+                    <p id="statsUsers">Пользователей: --</p>
+                    <p id="statsQuizzes">Викторин: --</p>
+                    <p id="statsAttempts">Попыток: --</p>
+                </div>
+                <button class="btn-danger" onclick="window.deleteAllQuizzes()">🗑 УДАЛИТЬ ВСЕ СВОИ ВИКТОРИНЫ</button>
+                <button class="btn-secondary" onclick="window.refreshStats()">🔄 Обновить статистику</button>
+            </div>
+            <div class="ad-banner-small"><span>🧹</span> Требуются волонтеры по уборке дворов!</div>
         </div>
     </div>
-
     <script src="/script.js"></script>
 </body>
 </html>
