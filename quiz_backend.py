@@ -1,4 +1,4 @@
-# quiz_backend.py - ПОЛНАЯ ВЕРСИЯ БЕЗ БД (всё работает)
+# quiz_backend.py - ПОЛНАЯ ВЕРСИЯ
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
@@ -19,18 +19,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ============================================
 # ХРАНИЛИЩЕ ДАННЫХ (в памяти)
-# ============================================
-users_db = {}  # user_id -> {id, username, created_at}
-quizzes_db = {}  # quiz_id -> {id, user_id, title, questions, created_at}
-attempts_db = {}  # attempt_id -> {id, quiz_id, user_id, answers, score, finished}
-sessions_db = {}  # username -> user_id (для быстрого входа)
+users_db = {}
+quizzes_db = {}
+attempts_db = {}
 
 
-# ============================================
 # МОДЕЛИ ДАННЫХ
-# ============================================
 class Question(BaseModel):
     text: str
     options: List[str]
@@ -53,9 +48,7 @@ class UserLogin(BaseModel):
     password: str
 
 
-# ============================================
 # ОТДАЧА ФАЙЛОВ
-# ============================================
 @app.get("/", response_class=HTMLResponse)
 async def serve_frontend():
     try:
@@ -83,12 +76,9 @@ async def serve_js():
         return HTMLResponse(content="", media_type="application/javascript")
 
 
-# ============================================
 # API ПОЛЬЗОВАТЕЛЕЙ
-# ============================================
 @app.post("/register")
 async def register(user: UserRegister):
-    # Проверяем, существует ли пользователь
     for uid, u in users_db.items():
         if u["username"] == user.username:
             raise HTTPException(status_code=400, detail="Пользователь уже существует")
@@ -100,9 +90,6 @@ async def register(user: UserRegister):
         "password": user.password,
         "created_at": datetime.now().isoformat()
     }
-    sessions_db[user.username] = user_id
-
-    print(f"✅ Зарегистрирован: {user.username} (ID: {user_id})")
     return {"success": True, "user_id": user_id, "username": user.username}
 
 
@@ -110,20 +97,14 @@ async def register(user: UserRegister):
 async def login(user: UserLogin):
     for uid, u in users_db.items():
         if u["username"] == user.username and u["password"] == user.password:
-            sessions_db[user.username] = uid
-            print(f"✅ Вход: {user.username}")
             return {"success": True, "user_id": uid, "username": user.username}
-
     raise HTTPException(status_code=401, detail="Неверное имя или пароль")
 
 
-# ============================================
 # API ВИКТОРИН
-# ============================================
 @app.post("/create_quiz")
 async def create_quiz(quiz_data: QuizData, request: Request):
     user_id = request.query_params.get("user_id")
-
     if not user_id or user_id not in users_db:
         raise HTTPException(status_code=401, detail="Необходима авторизация")
 
@@ -135,8 +116,6 @@ async def create_quiz(quiz_data: QuizData, request: Request):
         "questions": [q.dict() for q in quiz_data.questions],
         "created_at": datetime.now().isoformat()
     }
-
-    print(f"✅ Создана викторина: {quiz_id} - {quiz_data.title} (user: {user_id})")
     return {"quiz_id": quiz_id, "title": quiz_data.title}
 
 
@@ -145,16 +124,11 @@ async def get_quiz(quiz_id: str):
     quiz = quizzes_db.get(quiz_id)
     if not quiz:
         raise HTTPException(status_code=404, detail="Викторина не найдена")
-
     return {
         "id": quiz["id"],
         "title": quiz["title"],
         "questions": [
-            {
-                "text": q["text"],
-                "options": q["options"],
-                "time_limit": q.get("time_limit", 30)
-            }
+            {"text": q["text"], "options": q["options"], "time_limit": q.get("time_limit", 30)}
             for q in quiz["questions"]
         ]
     }
@@ -163,7 +137,6 @@ async def get_quiz(quiz_id: str):
 @app.get("/my_quizzes")
 async def get_my_quizzes(request: Request):
     user_id = request.query_params.get("user_id")
-
     if not user_id or user_id not in users_db:
         raise HTTPException(status_code=401, detail="Необходима авторизация")
 
@@ -175,49 +148,37 @@ async def get_my_quizzes(request: Request):
                 "title": quiz["title"],
                 "created_at": quiz["created_at"]
             })
-
     return my_quizzes
 
 
 @app.delete("/delete_quiz/{quiz_id}")
 async def delete_quiz(quiz_id: str, request: Request):
     user_id = request.query_params.get("user_id")
-
     quiz = quizzes_db.get(quiz_id)
     if not quiz:
         raise HTTPException(status_code=404, detail="Викторина не найдена")
-
     if quiz["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Нет прав на удаление")
-
     del quizzes_db[quiz_id]
-    print(f"🗑 Удалена викторина: {quiz_id}")
     return {"success": True}
 
 
 @app.delete("/delete_all_quizzes")
 async def delete_all_quizzes(request: Request):
     user_id = request.query_params.get("user_id")
-
     to_delete = []
     for quiz_id, quiz in quizzes_db.items():
         if quiz["user_id"] == user_id:
             to_delete.append(quiz_id)
-
     for quiz_id in to_delete:
         del quizzes_db[quiz_id]
-
-    print(f"🗑 Удалено викторин: {len(to_delete)} (user: {user_id})")
     return {"success": True, "deleted": len(to_delete)}
 
 
-# ============================================
 # API ПРОХОЖДЕНИЯ
-# ============================================
 @app.post("/start_quiz/{quiz_id}")
 async def start_quiz(quiz_id: str, request: Request):
     user_id = request.query_params.get("user_id")
-
     if quiz_id not in quizzes_db:
         raise HTTPException(status_code=404, detail="Викторина не найдена")
 
@@ -231,8 +192,6 @@ async def start_quiz(quiz_id: str, request: Request):
         "finished": 0,
         "started_at": datetime.now().isoformat()
     }
-
-    print(f"🎮 Начата попытка: {attempt_id} (викторина: {quiz_id})")
     return {"attempt_id": attempt_id}
 
 
@@ -253,10 +212,8 @@ async def submit_answer(attempt_id: str, data: dict):
         "answer": data["answer"],
         "is_correct": is_correct
     })
-
     if is_correct:
         attempt["score"] += 1
-
     return {"correct": is_correct, "score": attempt["score"]}
 
 
@@ -270,19 +227,9 @@ async def finish_quiz(attempt_id: str):
     total = len(quiz["questions"])
     attempt["finished"] = 1
     percentage = int((attempt["score"] / total) * 100) if total > 0 else 0
-
-    print(f"🏆 Завершена попытка: {attempt_id} - {attempt['score']}/{total}")
-
-    return {
-        "score": attempt["score"],
-        "total": total,
-        "percentage": percentage
-    }
+    return {"score": attempt["score"], "total": total, "percentage": percentage}
 
 
-# ============================================
-# СТАТИСТИКА
-# ============================================
 @app.get("/admin/stats")
 async def get_stats():
     return {
@@ -295,14 +242,7 @@ async def get_stats():
 
 @app.get("/health")
 async def health_check():
-    return {
-        "status": "ok",
-        "stats": {
-            "users": len(users_db),
-            "quizzes": len(quizzes_db),
-            "attempts": len(attempts_db)
-        }
-    }
+    return {"status": "ok"}
 
 
 if __name__ == "__main__":
@@ -310,13 +250,8 @@ if __name__ == "__main__":
 
     port = int(os.environ.get("PORT", 8000))
     print("=" * 50)
-    print("🎯 TikTok Викторина Челлендж (ПОЛНАЯ ВЕРСИЯ)")
+    print("🎯 TikTok Викторина Челлендж")
     print("=" * 50)
     print(f"✅ Сервер: http://localhost:{port}")
-    print("✅ Регистрация и вход: ДА")
-    print("✅ Реклама: ДА")
-    print("✅ Шаблоны: ДА")
-    print("✅ Мои викторины: ДА")
-    print("✅ Панель разработчика: ДА")
     print("=" * 50)
     uvicorn.run(app, host="0.0.0.0", port=port)

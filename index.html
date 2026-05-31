@@ -35,7 +35,7 @@
             <div class="ad-banner">
                 <div class="ad-icon">🧹</div>
                 <div class="ad-text">
-                    <strong>Требуются волонтеры по уборке дворов!</strong><br>
+                    <strong>Требуются волонтеры по уборке дворов!</strong>
                     Присоединяйся каждую субботу в 10:00
                 </div>
             </div>
@@ -69,25 +69,29 @@
             <div class="ad-banner">
                 <div class="ad-icon">🧹</div>
                 <div class="ad-text">
-                    <strong>Требуются волонтеры по уборке дворов!</strong><br>
+                    <strong>Требуются волонтеры по уборке дворов!</strong>
                     Присоединяйся каждую субботу в 10:00
                 </div>
             </div>
         </div>
 
-        <!-- ОСТАЛЬНЫЕ ЭКРАНЫ (создание, вход по коду, игра, результат, мои викторины, панель разработчика) -->
+        <!-- ЭКРАН ШАБЛОНОВ -->
         <div id="templatesScreen" class="hidden">
             <div class="header">
                 <button class="back-btn" onclick="window.showMenuScreen()">←</button>
                 <div class="header-icon">📚</div>
                 <h1>Готовые шаблоны</h1>
+                <p>Выберите тему для быстрого старта</p>
             </div>
             <div class="content">
                 <div class="templates-grid-full" id="templatesGridFull"></div>
             </div>
-            <div class="ad-banner-small"><span>🧹</span> Требуются волонтеры по уборке дворов!</div>
+            <div class="ad-banner-small">
+                <span>🧹</span> <span>Требуются волонтеры по уборке дворов!</span>
+            </div>
         </div>
 
+        <!-- ЭКРАН СОЗДАНИЯ -->
         <div id="createScreen" class="hidden">
             <div class="header">
                 <button class="back-btn" onclick="window.showMenuScreen()">←</button>
@@ -98,11 +102,14 @@
                 <input type="text" id="quizTitle" class="input-field" placeholder="Название викторины">
                 <div id="questionsContainer"></div>
                 <button class="btn-secondary" onclick="window.addQuestion()">+ Добавить вопрос</button>
-                <button class="btn-primary" onclick="window.createQuiz()">🚀 Создать</button>
+                <button class="btn-primary" onclick="window.createQuiz()">🚀 Создать викторину</button>
             </div>
-            <div class="ad-banner-small"><span>🧹</span> Требуются волонтеры по уборке дворов!</div>
+            <div class="ad-banner-small">
+                <span>🧹</span> <span>Требуются волонтеры по уборке дворов!</span>
+            </div>
         </div>
 
+        <!-- ЭКРАН ВХОДА ПО КОДУ -->
         <div id="joinScreen" class="hidden">
             <div class="header">
                 <button class="back-btn" onclick="window.showMenuScreen()">←</button>
@@ -113,9 +120,30 @@
                 <input type="text" id="quizCodeInput" class="input-field" placeholder="Введите код викторины">
                 <button class="btn-primary" onclick="window.joinQuiz()">Присоединиться</button>
             </div>
-            <div class="ad-banner-small"><span>🧹</span> Требуются волонтеры по уборке дворов!</div>
+            <div class="ad-banner-small">
+                <span>🧹</span> <span>Требуются волонтеры по уборке дворов!</span>
+            </div>
+        </div>
+                <!-- ЭКРАН КОДА ДЛЯ ШАРИНГА -->
+        <div id="shareScreen" class="hidden">
+            <div class="header">
+                <button class="back-btn" onclick="window.showMenuScreen()">←</button>
+                <div class="header-icon">🎉</div>
+                <h1>Викторина создана!</h1>
+            </div>
+            <div class="content" style="text-align: center;">
+                <div class="share-code-container">
+                    <div class="share-label">Поделись кодом с друзьями:</div>
+                    <div class="quiz-code" id="shareCode"></div>
+                </div>
+                <button class="btn-primary" onclick="window.copyCode()">📋 Скопировать код</button>
+            </div>
+            <div class="ad-banner-small">
+                <span>🧹</span> <span>Требуются волонтеры по уборке дворов!</span>
+            </div>
         </div>
 
+        <!-- ЭКРАН ПРОХОЖДЕНИЯ -->
         <div id="quizScreen" class="hidden">
             <div class="header">
                 <h1 id="quizTitleDisplay"></h1>
@@ -129,9 +157,12 @@
                 <div class="question-text" id="questionText"></div>
                 <div class="options-grid" id="optionsContainer"></div>
             </div>
-            <div class="ad-banner-small"><span>🧹</span> Требуются волонтеры по уборке дворов!</div>
+            <div class="ad-banner-small">
+                <span>🧹</span> <span>Требуются волонтеры по уборке дворов!</span>
+            </div>
         </div>
 
+        <!-- ЭКРАН РЕЗУЛЬТАТОВ -->
         <div id="resultScreen" class="hidden">
             <div class="header">
                 <button class="back-btn" onclick="window.showMenuScreen()">←</button>
@@ -147,9 +178,12 @@
                 <button class="btn-tiktok" onclick="window.shareToTikTok()">📱 Поделиться в TikTok</button>
                 <button class="btn-secondary" onclick="window.showMenuScreen()">🏠 Главное меню</button>
             </div>
-            <div class="ad-banner-small"><span>🧹</span> Требуются волонтеры по уборке дворов!</div>
+            <div class="ad-banner-small">
+                <span>🧹</span> <span>Требуются волонтеры по уборке дворов!</span>
+            </div>
         </div>
 
+        <!-- ЭКРАН МОИ ВИКТОРИНЫ -->
         <div id="myQuizzesScreen" class="hidden">
             <div class="header">
                 <button class="back-btn" onclick="window.showMenuScreen()">←</button>
@@ -157,11 +191,16 @@
                 <h1>Мои викторины</h1>
             </div>
             <div class="content">
-                <div id="quizzesList" class="quizzes-list"></div>
+                <div id="quizzesList" class="quizzes-list">
+                    <div class="loading">Загрузка...</div>
+                </div>
             </div>
-            <div class="ad-banner-small"><span>🧹</span> Требуются волонтеры по уборке дворов!</div>
+            <div class="ad-banner-small">
+                <span>🧹</span> <span>Требуются волонтеры по уборке дворов!</span>
+            </div>
         </div>
 
+        <!-- ЭКРАН ПАНЕЛИ РАЗРАБОТЧИКА -->
         <div id="devPanelScreen" class="hidden">
             <div class="header">
                 <button class="back-btn" onclick="window.showMenuScreen()">←</button>
@@ -171,14 +210,16 @@
             <div class="content">
                 <div class="dev-stats">
                     <h3>📊 Статистика</h3>
-                    <p id="statsUsers">Пользователей: --</p>
-                    <p id="statsQuizzes">Викторин: --</p>
-                    <p id="statsAttempts">Попыток: --</p>
+                    <p id="statsUsers">👥 Пользователей: --</p>
+                    <p id="statsQuizzes">📊 Викторин: --</p>
+                    <p id="statsAttempts">🎮 Попыток: --</p>
                 </div>
                 <button class="btn-danger" onclick="window.deleteAllQuizzes()">🗑 УДАЛИТЬ ВСЕ СВОИ ВИКТОРИНЫ</button>
                 <button class="btn-secondary" onclick="window.refreshStats()">🔄 Обновить статистику</button>
             </div>
-            <div class="ad-banner-small"><span>🧹</span> Требуются волонтеры по уборке дворов!</div>
+            <div class="ad-banner-small">
+                <span>🧹</span> <span>Требуются волонтеры по уборке дворов!</span>
+            </div>
         </div>
     </div>
     <script src="/script.js"></script>
